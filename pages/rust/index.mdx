@@ -1,4 +1,9 @@
+import Bleed from 'nextra-theme-docs/bleed'
+
+<div>
+<Bleed>
 # Rust Generics at An Assembly Level
+
 
 Rust like many languages today makes use of generics or more formally named
 parametric polymorphism. Generics simple allow a user to define a "stand-in
@@ -34,9 +39,12 @@ The code compiles, run's and doesn't really do anything unsurprisingly. Let's
 take a look at the generated assembly. This snippet isn't much but it will serve
 as a starting point as we investigate further.
 
+
+
 ```bash
 objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > ./src/non_generics.o
 ```
+
 
 ```nasm
 ; entry to Rust's main method
@@ -46,16 +54,18 @@ objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > .
 ; point to the exact same memory address
 1000037f0: 55                          	pushq	%rbp
 1000037f1: 48 89 e5                    	movq	%rsp, %rbp
+
+
 ; We allocate 16 bytes byt decrementing the top of the stack by 16 bytes.
 1000037f4: 48 83 ec 10                 	subq	$16, %rsp
-; We store the immediate (constant) 1234 into the 32 bit portion of the 64 bit %rdi register called %edi
-; If the value was larger than 32bits i.e greater than i32::MAX, the %edi would change to %rdi as it has to
-; use the entire 64-bit %rdi register to accommodate for the larger value. We also store it in the %rdi so that in the
+; we store the immediate (constant) 1234 into the 32 bit portion of the 64 bit %rdi register called %edi
+; if the value was larger than 32bits i.e greater than i32::max, the %edi would change to %rdi as it has to
+; use the entire 64-bit %rdi register to accommodate for the larger value. we also store it in the %rdi so that in the
 ; next call, where we call out to the `non_generic_fn`, we can use the value stored in %edi as an input parameter to the
 ; `non_generic_fn`.
 1000037f8: bf d2 04 00 00              	movl	$1234, %edi
 ; We call our `non_generic_fn` let's look at the `non_generic_fn` procedure below before continuing.
-1000037fd: e8 0e 00 00 00              	callq	14 <_non_generic_fn>
+1000037fd: e8 0e 00 00 00              	callq	14 \<_non_generic_fn\>
 ; Hopefully you've read through the `non_generic_fn` procedure below before continuing here.
 ; We take the value stored in %rax (the input to our `non_generic_fn`) and we allocate 8 bytes in the stack
 ; so we can store it.
@@ -71,7 +81,7 @@ objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > .
 
 ; The `non_generic_fn` procedure
 0000000100003810 _non_generic_fn:
-; Hopefully you are here immediately after the `call  14 <_non_generic_fn>` command above
+; Hopefully you are here immediately after the `call  14 \<_non_generic_fn\>` command above
 
 ; We start again by initializing the stack
 100003810: 55                          	pushq	%rbp
@@ -87,15 +97,12 @@ objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > .
 10000381c: c3                          	retq
 10000381d: 0f 1f 00                    	nopl	(%rax)
 
-
-
-
 generics::main::h7ecffc4403148146:
                	pushq	%rbp
                	movq	%rsp, %rbp
                	subq	$16, %rsp
                	movl	$1234, %edi
-               	callq	14 <_non_generic_fn>
+               	callq	14 \<_non_generic_fn\>
                	movq	%rax, -8(%rbp)
                	addq	$16, %rsp
                	popq	%rbp
@@ -111,6 +118,8 @@ _non_generic_fn:
                	retq
                	nopl	(%rax)
 ```
+
+
 The generated assembly as the following two procedures,
 `<your-crate-name>:main::<some-random-string>` which is the `main` function, and
 `_non_generic_fn` is the inner function in the earlier code snippet. Let's start
@@ -173,6 +182,8 @@ generics::main::generic_fn::hd668656b76776223:
                	nop
                	nop
 ```
+
+
 As we can see from the code snippet xxx, we have near identical assembly
 output between the `generic` and `non_generic` outputs. There is virtually no
 difference in number of instructions as well as allocations.
@@ -185,3 +196,25 @@ impact on performance as they contain no additional instructions when compiled
 down to assembly and machine code.
 
 We can thank the Rust compiler team for that!
+</Bleed>
+
+<section id="comments">
+          <h4>
+            <a href="">Comments</a>
+          </h4>
+          <div
+            dangerouslySetInnerHTML={{
+              __html: `<script src="https://utteranc.es/client.js"
+                    repo="YikSanChan/yiksanchan.com"
+                    issue-term="pathname"
+                    label="comments"
+                    theme="github-light"
+                    crossorigin="anonymous"
+                    async>
+            </script>`,
+            }}
+          />
+        </section>
+
+</div>
+
