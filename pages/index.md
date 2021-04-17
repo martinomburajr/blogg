@@ -1,7 +1,9 @@
-# Nextra
+# @martinomburajr
 
-**Nextra** is a [Next.js](https://nextjs.org) based static site generator. 0 lines of code needed.  
+Hi my name is Martin Ombura Jr. a software engineer working mostly in Rust 🦀  and
+Go.
 
-It supports Markdown with React components ([MDX](/mdx)), automatically generated [sidebar and anchor links](/docs/anchors), file-system based routing, built-in syntax highlighting, i18n and more.
+I enjoy digging deep into the internals of how computers work and so most of
+my posts will be look at the internals of most systems.
 
-![](/demo.png)
+Twitter: [@martinomburajr](https://twitter.com/martinomburajr)
