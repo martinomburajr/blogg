@@ -1,29 +1,32 @@
 {
   "name": "blogg",
   "version": "1.0.0",
-  "description": "",
+  "description": "A blog for rust, rustlang and other systems software concepts",
   "main": "index.js",
   "scripts": {
     "dev": "next",
     "start": "next start",
-    "build": "next build"
+    "build": "STORK_PATH=$(pwd)/bin/stork.bin next build"
   },
   "author": "Martin Ombura Jr.",
   "license": "MIT",
   "dependencies": {
-    "next": "^10.0.8-canary.9",
-    "nextra": "^0.4.1",
-    "nextra-theme-docs": "^1.1.2",
+    "@reach/skip-nav": "^0.10.5",
+    "focus-visible": "^5.1.0",
+    "intersection-observer": "^0.10.0",
+    "markdown-to-jsx": "^6.11.4",
+    "next": "^10.0.7",
+    "nextra": "^0.4.3",
+    "nextra-theme-docs": "^1.1.4",
     "prism-react-renderer": "^1.2.0",
     "prismjs": "^1.23.0",
     "react": "^17.0.1",
-    "react-dom": "^17.0.1"
+    "react-dom": "^17.0.1",
+    "react-intersection-observer": "^8.26.2"
   },
   "devDependencies": {
-    "prettier": "^2.0.5"
-  },
-  "prettier": {
-    "semi": false,
-    "singleQuote": true
+    "cssnano": "^4.1.10",
+    "postcss-preset-env": "^6.7.0",
+    "tailwindcss": "^1.4.6"
   }
 }

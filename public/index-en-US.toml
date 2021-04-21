@@ -1,0 +1,18 @@
+[input]
+minimum_indexed_substring_length = 2
+title_boost = "Ridiculous"
+stemming = "English"
+
+[[input.files]]
+title = "Rust 🦀"
+url = "/rust"
+contents = "Rust like many languages today makes use of generics or more formally named\nparametric polymorphism. Generics simple allow a user to define a \"stand-in\nparameter to a set of types (functions, structs, enums, struct implementations)\nHowever this is typically a point of confusion to many individuals. Generics are\nonly generic until a certain point before the rust compiler has to ask you to be\na bit more specific,\nAs usual all code in this article will be housed in a main() for easier\ncopy/paste and testing.\ncaption-goes-here\nIn the snippet above, we create a simple function non_generic_fn that takes in\nan argument b of type i64 and returns the same variable b as an i64.\nThis function acts as a simple \"pass-through\" function. We collect the result\nand store it in a variable _ans. We add the #[no_mangle] outer attribute to\nensure our function names remain intact and are not modified or decorated by the\ncompiler. This is mostly for convenience when analyzing the resulting assembly.\nAssembly Code\nThe code compiles, run's and doesn't really do anything unsurprisingly. Let's\ntake a look at the generated assembly. This snippet isn't much but it will serve\nas a starting point as we investigate further.\nThe generated assembly as the following two procedures,\n<your-crate-name>:main::<some-random-string> which is the main function, and\n_non_generic_fn is the inner function in the earlier code snippet. Let's start\nin main. I have annotated the assembly output to provide greater clarity (keep\nin mind the memory addresses shown in the right could be any value and don't\nneed to match up with mine.)\nIn this case the snippet is similar, except we have a generic function\ngeneric_fn that takes in a variable b' of type T and returns an element of\ntype T. We build the project then run\nLet's examine the generated generics.o object file.\nAs we can see from the code snippet xxx, we have near identical assembly\noutput between the generic and non_generic outputs. There is virtually no\ndifference in number of instructions as well as allocations.\nConclusion\nGenerics are purely a programmer convenience tool that reduce repetition and can\ncommunicate the general characteristics of a Rust type. They have little to no\nimpact on performance as they contain no additional instructions when compiled\ndown to assembly and machine code.\nWe can thank the Rust compiler team for that!\n{/* <iframe src=\"https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=0b166cd0cfd1498565c2c17741e176c9\"\nwidth=\"100%\"\nheight=\"500px\"\ntitle=\"SWR-States\"\n"
+filetype = "PlainText"
+[[input.files]]
+title = "@martinomburajr"
+url = "/"
+contents = "@martinomburajr\nHi my name is Martin Ombura Jr., a software engineer working mostly in Rust 🦀  and\nGo.\nI enjoy digging deep into the internals of how computers work and so most of\nmy posts will be look at the internals of most systems.\nTwitter: @martinomburajr\n"
+filetype = "PlainText"
+[output]
+filename = "/Users/martinomburajr/dev/github.com/martinomburajr/blogg/public/index-en-US.st"
+excerpts_per_result = 1
