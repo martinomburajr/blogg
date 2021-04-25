@@ -6,3 +6,5 @@ dist
 examples
 packages
 old
+blogg.code-workspace
+.experiments

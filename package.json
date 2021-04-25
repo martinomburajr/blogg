@@ -27,6 +27,8 @@
   "devDependencies": {
     "cssnano": "^4.1.10",
     "postcss-preset-env": "^6.7.0",
-    "tailwindcss": "^1.4.6"
+    "tailwindcss": "^1.4.6",
+    "too-wordy": "^0.3.1",
+    "write-good": "^1.0.8"
   }
 }

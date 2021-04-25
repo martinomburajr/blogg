@@ -1,0 +1,297 @@
+import Bleed from "nextra-theme-docs/bleed";
+
+# Rust Generics at An Assembly Level
+
+Rust like many programming languages today makes use of a programming construct
+called generics. Generics, more formally known as parametric polymorphism, is
+[defined as](https://en.wikipedia.org/wiki/Parametric_polymorphism#:~:text=In%20programming%20languages%20and%20type,without%20depending%20on%20their%20type.)
+a way to make a language more expressive, while still maintaining full static
+type-safety.
+
+When making use of parametric polymorphism, a function or a data type can be
+defined in an abstract way so as to be used freely across other types that
+accept the abstracted type. In Rust, generics allow a user to define a
+"stand-in" parameter to a set of
+types (functions, enums, structs, struct implementations)
+
+The abstract nature of generics lends itself to confusion as one has to mix the
+notion of an abstract type `T` with a concrete type such as a function, or
+struct. This diverse dance between different abstractions can lead to increased cognitive
+load when trying to ascertain how a program might use the generic type.
+
+**In this article we explore the following:**
+
+1. How generic Rust code is compiled down to assembly code
+2. The potential performance impact of generic code
+
+*__Note:__ This article is not an
+[introduction to generics](https://doc.rust-lang.org/book/ch10-01-syntax.html)*
+
+
+## Understanding Generic Abstraction
+
+One guiding principle to remember about generics is that at a low level, a CPU can never execute
+something abstract (i.e something not clearly defined), and at some point, a
+generic definition must be converted into a concrete type ('clearly defined') so
+that it can be executed.
+
+Clearly defining a type is one of the many thing Rust does well by
+ensuring strict enforcement of types at compile time. Meaning that at a certain
+point, the Rust compiler will either convert the generic type into a concrete
+one based on code you have supplied, or the compiler will ask you to be more specific.
+
+## Generics and Assembly
+
+
+```rust
+///CS1: A simple non-generic Rust function
+
+fn main() {
+    #[no_mangle]
+    fn non_generic_fn(b: i64) -> i64 {
+        b
+    }
+
+    let _ans = non_generic_fn(1234_i64);
+}
+```
+
+In the snippet above, we create a function `non_generic_fn` that takes in
+an argument `b` of type `i64` and returns the same variable `b` as an `i64`.
+This function acts as a simple "pass-through" function. We collect the result
+and store it in a variable `_ans`. We add the `#[no_mangle]` outer attribute to
+the function to ensure our function names remain intact and are not modified or decorated by the
+compiler. This is mostly for convenience when analyzing the resulting assembly.
+
+## x86_64 Assembly: Regular Code
+
+The snippet shown in `CS1` isn't much but it will serve as a starting point as we investigate
+later what happens when we introduce generics.
+
+Let's first generate the assembly.
+
+<Bleed>
+```bash
+# CS2: We build the binary and run an objdump which takes the binary we built, demangles it to obtain the x86_64 assembly code
+# and finally passes the assembly into a new file called `non_generics.o`.
+# We also specify we want to use the AT&T x64_86 assembly syntax.
+
+$cargo build;
+$objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > ./src/non_generics.o
+```
+</Bleed>
+
+Let's open up the `src/non_generics.o` object file and inspect it. The file can
+be quite long as there are additional instructions the compiler adds to the file
+to ensure the binary gets loaded correctly. Depending on your operating system
+you may see a varying amount of instructions.
+
+We should look for two procedures,
+1. The Rust entry point (main function)
+2. The `non_generic_fn`
+
+The `main` function should have a pattern
+`<your-crate-name>:main::<some-random-string>`. In my case it is called
+`generics::main::<some_random_chars>`.
+
+The `non_generic_fn` should simply be called `non_generic_fn`. Note the names
+are identical because the Rust compiler did not mangle the name.
+
+Let's start in `main`. I have annotated the assembly output for `CS3` (main
+function) and `CS4` (`non_generic_fn`) to provide greater clarity.
+Keep in mind the memory addresses shown in the right could be any value and don't
+need to match up with mine.
+
+<Bleed>
+```nasm
+; CS3: the entry to Rust's main method, your memory address may be different.
+00000001000037f0 generics::main::h7ecffc4403148146:
+
+1000037f0: 55                           pushq   %rbp
+1000037f1: 48 89 e5                     movq    %rsp, %rbp
+; We initialize the stack by setting the stack pointer %rsp, to the stack base pointer %rbp.
+; This initializes a stack of 0 bytes as the top of the stack (%rsp) and base of the stack (%rbp)
+; point to the exact same memory address
+
+1000037f4: 48 83 ec 10                  subq    $16, %rsp
+; We allocate 16 bytes decrementing the top of the stack by 16 bytes. (The stack grows to lower memory addresses)
+
+1000037f8: bf d2 04 00 00               movl    $1234, %edi
+; we store the immediate (constant) 1234 into the 32 bit portion of the 64 bit %rdi register called %edi register.
+; If we chose a larger constant with a value larger than i32::max, the compiler would instead use the entire %rdi (64-bit)
+; register instead of %edi (32-bit) register. (You can try this for yourself).
+
+1000037fd: e8 0e 00 00 00               callq   14 '_non_generic_fn'
+; We then call out to the 'non_generic_fn'. The constant 1234 that we stored in the %edi register will be used
+; as the input parameter to the '_non_generic_fn' procedure.
+; This convention of passing in function parameters using registers is detailed in the
+; x86_64 ABI (See Additional Resources section of this article)
+; We call our `non_generic_fn` let's jump to the 'non_generic_fn' procedure in code snippet 4 (CS4) below;
+; before continuing with the next few lines.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; GO TO CS4 before continuing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+100003802: 48 89 45 f8                  movq    %rax, -8(%rbp)
+; Hopefully you've read through the `non_generic_fn` procedure below before continuing here.
+; We take the value stored in %rax (the output from our `non_generic_fn`) and we allocate 8 bytes in the stack
+; so we can store it. This is where our Rust variable `_ans` lives. So `_ans` now has the value returned from 'non_generic_fn'
+
+100003806: 48 83 c4 10                  addq    $16, %rsp
+; Now that we are done, we close the stack by eliminating the initial offset of the top of the stack to the bottom of the stack.
+; we do this by incrementing the top of the stack by 16 bytes, which takes us back to the base of the stack.
+; This de-allocates the initialized memory.
+
+10000380a: 5d                           popq    %rbp
+10000380b: c3                           retq
+10000380c: 0f 1f 40 00                  nopl    (%rax)
+; We pop the stack, and return from main!
+
+```
+
+```nasm
+; CS4: The `non_generic_fn` procedure (still in the same file)
+
+0000000100003810 _non_generic_fn:
+; Hopefully you are here immediately after the `call  14 '_non_generic_fn' command above
+; Note how the procedure name 'non_generic_fn' is exactly the same name as the one in the Rust main method.
+; The #[no_mangle] attribute ensured we maintained the same name without any new random (mangled) characters
+; like how the main procedure name was mangled.
+
+100003810: 55                           pushq   %rbp
+100003811: 48 89 e5                     movq    %rsp, %rbp
+; We start again by initializing the stack
+
+100003814: 48 89 7d f8                  movq    %rdi, -8(%rbp)
+; We take the contents of the %rdi register that had the value 1234 (see above procedure in CS3)
+; and place it 8 bytes offset from the base pointer.
+; In short, we are allocating 8 bytes for our Rust function argument `b: i64`. Why 8 bytes? because it is a
+; 64-bit number we are allocating (8 bytes * 8 bits).
+
+100003818: 48 89 f8                     movq    %rdi, %rax
+; We also copy the contents constant 1234 from the %rdi register into the accumulator register (%rax).
+; By convention the %rax register in x86_64 is used for accumulating values that are to be returned
+; from a function as we are about to do.
+
+10000381b: 5d                           popq    %rbp
+10000381c: c3                           retq
+10000381d: 0f 1f 00                     nopl    (%rax)
+; We pop the stack, and return back to our calling function. Go back to where we paused in CS3
+```
+</Bleed>
+
+In `CS5` below we have all the code in `CS3` and `CS4` without the annotations
+
+```nasm
+; CS5: All the code in CS3 & CS4 without annotations.
+generics::main::h7ecffc4403148146:
+                pushq   %rbp
+                movq    %rsp, %rbp
+                subq    $16, %rsp
+                movl    $1234, %edi
+                callq   14 '_non_generic_fn'
+                movq    %rax, -8(%rbp)
+                addq    $16, %rsp
+                popq    %rbp
+                retq
+                nopl    (%rax)
+
+_non_generic_fn:
+                pushq   %rbp
+                movq    %rsp, %rbp
+                movq    %rdi, -8(%rbp)
+                movq    %rdi, %rax
+                popq    %rbp
+                retq
+                nopl    (%rax)
+
+```
+
+Now that we have an understanding of how Rust compiles to assembly, and how the
+assembly instructions are layed out for our simple `non_generic_fn`, let's take
+a look at what happens when we compile a Rust generic function into assembly.
+
+## x86_64 Assembly: Generic Code
+
+```rust
+/// CS6: A generic function similar to the one shown in CS1
+fn main() {
+    #[no_mangle]
+    fn generic_fn<T>(b: T) -> T {
+        b
+    }
+
+    let _ans = generic_fn(1234_i64);
+}
+```
+
+In CS6 we have a generic function `generic_fn` that takes in a variable `b` of type `T` and returns an element of
+type `T`.
+
+We build the project then run
+
+<Bleed>
+```bash
+# CS7: Build and disassebly the built binary into x86_64 AT&T assembly and
+dump the output to `./src/generics.o`
+
+$cargo build;
+$objdump --x86-asm-syntax=att --demangle -d ../target/debug/<your-crate-name> > ./src/generics.o;
+```
+</Bleed>
+
+Let's examine the generated `generics.o` object file.
+
+```nasm
+; CS8: Generic Rust code in _x86_64 assembly
+; Rust's main method
+generics::main::h7ecffc4403148146:
+               	pushq	%rbp
+               	movq	%rsp, %rbp
+               	subq	$16, %rsp
+; Initialize stack
+
+               	movl	$1234, %edi
+; Move 1234 to 32 bit portion of the %rdi register called %edi
+
+               	callq	142 <generic_fn>
+; Call the `generic_fn` procedure
+               	movq	%rax, -8(%rbp)
+               	addq	$16, %rsp
+               	popq	%rbp
+               	retq
+               	nopl	(%rax)
+
+; `generic_fn` procedure
+_generic_fn:
+               	pushq	%rbp
+               	movq	%rsp, %rbp
+; Initialize stack
+               	movq	%rdi, -8(%rbp)
+; allocate 8 bytes in the stack and move the 1234 value from %rdi to the stack
+               	movq	%rdi, %rax
+; move 1234 from %rdi to the %rax register
+               	popq	%rbp
+               	retq
+               	nop
+               	nop
+               	nop
+; pop the stack
+```
+
+As we can see from the code snippet CS8, we have near identical assembly
+output between the `generic` and `non_generic` outputs. There is virtually no
+difference in number of instructions as well as allocations made by the CPU.
+
+## Conclusion
+
+Generics are purely a programmer convenience tool that reduce repetition and can
+communicate the general characteristics of a Rust type. They have little to no
+impact on performance as they contain no additional instructions when compiled
+down to assembly and machine code.
+
+In Rust they are an example of a zero-cost abstraction. We can thank the Rust compiler team for that!
+
+## Additional Resources
+1. x86_64 ABI (2018 Version) - [https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf](https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf)
+
+
